@@ -13,6 +13,12 @@ function initBattlefield() {
     battlefield.innerHTML = '';
     cells.length = 0;
     
+    // 根据屏幕尺寸调整格子大小
+    const screenWidth = window.innerWidth;
+    const cellSize = Math.min(100, Math.floor((screenWidth - 100) / 5));
+    battlefield.style.gridTemplateColumns = `repeat(5, ${cellSize}px)`;
+    battlefield.style.gridTemplateRows = `repeat(5, ${cellSize}px)`;
+    
     for (let row = 0; row < GRID_SIZE; row++) {
         for (let col = 0; col < GRID_SIZE; col++) {
             const cell = document.createElement('div');
@@ -36,17 +42,26 @@ function initBattlefield() {
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
     });
+    
+    // 响应窗口大小变化
+    window.addEventListener('resize', initBattlefield);
 }
 
 // 拖拽炮塔事件
 function handleDragStart(e) {
-    currentDraggingTower = e.target.closest('.tower-item').dataset.tower;
-    e.target.closest('.tower-item').style.opacity = '0.5';
-    e.dataTransfer.effectAllowed = 'copy';
+    const towerItem = e.target.closest('.tower-item') || e.target.closest('.turret');
+    if (towerItem) {
+        currentDraggingTower = towerItem.dataset.tower || towerItem.dataset.type;
+        towerItem.style.opacity = '0.5';
+        e.dataTransfer.effectAllowed = 'copy';
+    }
 }
 
 function handleDragEnd(e) {
-    e.target.closest('.tower-item').style.opacity = '1';
+    const towerItem = e.target.closest('.tower-item') || e.target.closest('.turret');
+    if (towerItem) {
+        towerItem.style.opacity = '1';
+    }
     currentDraggingTower = null;
 }
 
@@ -64,11 +79,45 @@ function handleDrop(e) {
     e.preventDefault();
     e.target.classList.remove('hovering');
     
-    if (!currentDraggingTower || e.target.querySelector('.turret')) {
+    if (!currentDraggingTower) {
         return;
     }
     
-    // 创建炮塔
+    // 检查是否是移动炮塔
+    const targetCell = e.target.closest('.cell');
+    const existingTurret = targetCell.querySelector('.turret');
+    
+    if (existingTurret) {
+        // 如果目标格子已有炮塔，交换位置
+        const sourceTurret = document.querySelector('.turret.dragging');
+        if (sourceTurret && sourceTurret !== existingTurret) {
+            const sourceCell = sourceTurret.closest('.cell');
+            const sourceType = sourceTurret.dataset.type;
+            const targetType = existingTurret.dataset.type;
+            
+            sourceTurret.dataset.type = targetType;
+            sourceTurret.querySelector('img').src = `assets/${targetType}.svg`;
+            
+            existingTurret.dataset.type = sourceType;
+            existingTurret.querySelector('img').src = `assets/${sourceType}.svg`;
+            
+            sourceTurret.classList.remove('dragging');
+        }
+        return;
+    }
+    
+    // 检查是否是从已有炮塔拖拽
+    const draggingTurret = document.querySelector('.turret.dragging');
+    if (draggingTurret) {
+        const sourceCell = draggingTurret.closest('.cell');
+        sourceCell.removeChild(draggingTurret);
+        draggingTurret.classList.remove('dragging');
+        targetCell.appendChild(draggingTurret);
+        updateStatus();
+        return;
+    }
+    
+    // 创建新炮塔
     const turret = document.createElement('div');
     turret.className = 'turret';
     turret.dataset.type = currentDraggingTower;
@@ -81,7 +130,16 @@ function handleDrop(e) {
     };
     
     turret.appendChild(img);
-    e.target.appendChild(turret);
+    targetCell.appendChild(turret);
+    
+    // 为已有炮塔添加拖拽事件
+    turret.setAttribute('draggable', 'true');
+    turret.addEventListener('dragstart', function(e) {
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
+        handleDragStart(e);
+    });
+    turret.addEventListener('dragend', handleDragEnd);
     
     updateStatus();
 }
@@ -99,10 +157,14 @@ function updateStatus() {
 // 发射炮弹
 function fireBullet(turret, row, col) {
     const cell = cells[row * GRID_SIZE + col];
+    const battlefieldRect = battlefield.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
     
     // 创建炮弹
     const bullet = document.createElement('div');
-    bullet.className = 'bullet bullet-firing';
+    bullet.className = 'bullet';
+    bullet.style.left = `${cellRect.left - battlefieldRect.left + 40}px`;
+    bullet.style.top = `${cellRect.top - battlefieldRect.top + 40}px`;
     
     const img = document.createElement('img');
     img.src = 'assets/bullet.svg';
@@ -112,7 +174,7 @@ function fireBullet(turret, row, col) {
     };
     
     bullet.appendChild(img);
-    cell.appendChild(bullet);
+    battlefield.appendChild(bullet);
     
     // 根据炮塔类型设置炮弹飞行方向
     const towerType = turret.dataset.type;

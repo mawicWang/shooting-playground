@@ -74,13 +74,13 @@
         
         .battlefield {
             display: grid;
-            grid-template-columns: repeat(5, 100px);
-            grid-template-rows: repeat(5, 100px);
             gap: 2px;
             background-color: #333;
             padding: 2px;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: visible;
         }
         
         .cell {
@@ -92,7 +92,7 @@
             align-items: center;
             transition: all 0.3s ease;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
         }
         
         .cell:hover {
@@ -107,13 +107,14 @@
         }
         
         .turret {
-            width: 80px;
-            height: 80px;
+            width: 80%;
+            height: 80%;
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
             animation: turretIdle 2s infinite ease-in-out;
+            cursor: grab;
         }
         
         .turret img {
