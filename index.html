@@ -3,212 +3,337 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shooting Playground - 5x5 战场</title>
+    <title>塔防游戏 - Shooting Playground</title>
     <style>
-        body {
+        * {
             margin: 0;
-            padding: 20px;
-            background-color: #1a1a1a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
+            padding: 0;
+            box-sizing: border-box;
         }
         
-        h1 {
-            color: #e0e0e0;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
             margin-bottom: 30px;
         }
-        
-        .game-container {
+
+        h1 {
+            color: #4ecca3;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(78, 204, 163, 0.5);
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        .game-layout {
             display: flex;
             gap: 30px;
-            align-items: flex-start;
-        }
-        
-        .tower-panel {
-            background-color: #2d2d2d;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            min-width: 120px;
-        }
-        
-        .tower-panel h2 {
-            color: #e0e0e0;
-            font-size: 18px;
-            margin-top: 0;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .tower-item {
-            background-color: #383838;
-            border: 2px solid #666;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            cursor: grab;
-            display: flex;
+            flex-wrap: wrap;
             justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
         }
-        
+
+        .tower-panel {
+            background: rgba(30, 40, 70, 0.9);
+            border: 2px solid #4ecca3;
+            border-radius: 12px;
+            padding: 20px;
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .tower-panel h2 {
+            color: #4ecca3;
+            font-size: 1.3em;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .tower-item {
+            background: rgba(78, 204, 163, 0.1);
+            border: 2px solid rgba(78, 204, 163, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: grab;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
         .tower-item:hover {
-            background-color: #4a4a4a;
-            border-color: #999;
+            background: rgba(78, 204, 163, 0.2);
+            border-color: #4ecca3;
             transform: translateY(-2px);
         }
-        
+
         .tower-item:active {
             cursor: grabbing;
-            transform: scale(0.98);
         }
-        
+
         .tower-item img {
             width: 60px;
             height: 60px;
-            object-fit: contain;
+            margin-bottom: 8px;
+            pointer-events: none;
         }
-        
-        .battlefield {
-            display: grid;
-            gap: 2px;
-            background-color: #333;
-            padding: 2px;
+
+        .tower-item .name {
+            font-weight: bold;
+            color: #4ecca3;
+            margin-bottom: 5px;
+        }
+
+        .tower-item .desc {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+
+        .battlefield-container {
+            flex: 1;
+            min-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .status {
+            background: rgba(78, 204, 163, 0.1);
+            padding: 10px 20px;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            position: relative;
-            overflow: visible;
+            border: 1px solid rgba(78, 204, 163, 0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
         }
-        
-        .cell {
-            background-color: #2d2d2d;
-            border: 2px solid #666;
-            border-radius: 4px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+
+        #startBtn {
+            background: linear-gradient(145deg, #4ecca3, #3db892);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.3);
+        }
+
+        #startBtn:hover {
+            background: linear-gradient(145deg, #3db892, #2da881);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+        }
+
+        #startBtn:active {
+            transform: translateY(0);
+        }
+
+        #battlefield {
+            display: grid;
+            grid-template-columns: repeat(5, 100px);
+            grid-template-rows: repeat(5, 100px);
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 12px;
+            border: 2px solid #4ecca3;
             position: relative;
-            overflow: visible;
+            margin-bottom: 20px;
         }
-        
-        .cell:hover {
-            background-color: #383838;
-            border-color: #999;
+
+        .cell {
+            background: rgba(78, 204, 163, 0.05);
+            border: 1px dashed rgba(78, 204, 163, 0.2);
+            border-radius: 4px;
+            min-height: 100px;
+            position: relative;
+            transition: all 0.3s ease;
         }
-        
+
         .cell.hovering {
-            background-color: #4a4a4a;
-            border-color: #ccc;
-            transform: scale(1.02);
+            background: rgba(78, 204, 163, 0.2);
+            border-color: #4ecca3;
+            box-shadow: inset 0 0 10px rgba(78, 204, 163, 0.3);
         }
-        
+
         .turret {
-            width: 80%;
-            height: 80%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            animation: turretIdle 2s infinite ease-in-out;
-            cursor: grab;
-        }
-        
-        .turret img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            position: relative;
+            z-index: 10;
         }
-        
-        @keyframes turretIdle {
-            0%, 100% {
-                transform: rotate(0deg);
-            }
-            50% {
-                transform: rotate(5deg);
-            }
+
+        .turret.dragging {
+            opacity: 0.5;
         }
-        
+
+        .turret img {
+            width: 80%;
+            height: 80%;
+            pointer-events: none;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+            transition: transform 0.2s ease;
+        }
+
+        .turret:hover img {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 8px rgba(78, 204, 163, 0.6));
+        }
+
         .bullet {
             position: absolute;
             width: 20px;
             height: 20px;
             pointer-events: none;
-            z-index: 100;
+            z-index: 50;
+            will-change: transform, opacity;
         }
-        
+
         .bullet img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
         }
-        
-        .controls {
-            margin-top: 30px;
-            display: flex;
-            gap: 15px;
-            align-items: center;
+
+        .legend {
+            background: rgba(30, 40, 70, 0.9);
+            border: 2px solid rgba(78, 204, 163, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            max-width: 600px;
         }
-        
-        button {
-            padding: 12px 24px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
+
+        .legend h3 {
+            color: #4ecca3;
+            margin-bottom: 15px;
+        }
+
+        .legend ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .legend li {
+            padding: 8px;
+            background: rgba(78, 204, 163, 0.05);
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
         }
-        
-        button:hover {
-            background-color: #45a049;
+
+        .legend li strong {
+            color: #4ecca3;
         }
-        
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .status {
-            color: #e0e0e0;
-            font-size: 18px;
+
+        @media (max-width: 768px) {
+            .game-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tower-panel {
+                width: 100%;
+                max-width: 500px;
+            }
+
+            #battlefield {
+                grid-template-columns: repeat(5, 70px);
+                grid-template-rows: repeat(5, 70px);
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>🎮 Shooting Playground - 5x5 战场</h1>
-    
-    <div class="game-container">
-        <!-- 左侧炮塔面板 -->
-        <div class="tower-panel">
-            <h2>炮塔库</h2>
-            <div class="tower-item" draggable="true" data-tower="tower1">
-                <img src="assets/tower1.svg" alt="向上炮塔" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzY2NiIvPgo8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI2IiBmaWxsPSIjOTk5Ii8+CjxwYXRoIGQ9Ik0zMiAxNlYxMC41TDIxIDE5TDMyIDI4TDQzIDE5TDMyIDEwLjVWMjBaIiBmaWxsPSIjRkNGQ0ZDIi8+Cjwvc3ZnPgo='">
-            </div>
-            <div class="tower-item" draggable="true" data-tower="tower2">
-                <img src="assets/tower2.svg" alt="向右炮塔" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzY2NiIvPgo8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI2IiBmaWxsPSIjOTk5Ii8+CjxwYXRoIGQ9Ik0zMiAxNlYxMC41TDMxIDI4TDQzIDE5TDMyIDEwLjVWMjBaIiBmaWxsPSIjRkNGQ0ZDIi8+Cjwvc3ZnPgo='">
-            </div>
-            <div class="tower-item" draggable="true" data-tower="tower3">
-                <img src="assets/tower3.svg" alt="向下炮塔" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzY2NiIvPgo8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI2IiBmaWxsPSIjOTk5Ii8+CjxwYXRoIGQ9Ik0zMiAxNlYxMC41TDIxIDE5TDMyIDI4TDQzIDE5TDMyIDIwVjI4WiIgZmlsbD0iI0ZDRkNGQyIvPgo8L3N2Zz4K'">
-            </div>
-            <div class="tower-item" draggable="true" data-tower="tower4">
-                <img src="assets/tower4.svg" alt="向左炮塔" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iIzY2NiIvPgo8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI2IiBmaWxsPSIjOTk5Ii8+CjxwYXRoIGQ9Ik0zMiAxNlYxMC41TDIxIDE5TDMyIDI4TDIzIDI4TDMyIDEwLjVWMjBaIiBmaWxsPSIjRkNGQ0ZDIi8+Cjwvc3ZnPgo='">
-            </div>
+    <div class="container">
+        <header>
+            <h1>🎯 塔防游戏</h1>
+            <p class="subtitle">拖拽炮塔到战场，开始战斗！</p>
+        </header>
+
+        <div class="game-layout">
+            <aside class="tower-panel">
+                <h2>炮塔选择</h2>
+                <div class="tower-item" draggable="true" data-tower="tower1">
+                    <img src="assets/tower1.svg" alt="Fixed Tower">
+                    <div class="name">固定炮塔</div>
+                    <div class="desc">伤害:10 射速:1.0s<br>向正前方</div>
+                </div>
+                <div class="tower-item" draggable="true" data-tower="tower2">
+                    <img src="assets/tower2.svg" alt="Rotating Tower">
+                    <div class="name">旋转炮塔</div>
+                    <div class="desc">伤害:8 射速:0.8s<br>360°自动瞄准</div>
+                </div>
+                <div class="tower-item" draggable="true" data-tower="tower3">
+                    <img src="assets/tower3.svg" alt="Sniper Tower">
+                    <div class="name">狙击炮塔</div>
+                    <div class="desc">伤害:50 射速:2.0s<br>高伤害、远射程</div>
+                </div>
+                <div class="tower-item" draggable="true" data-tower="tower4">
+                    <img src="assets/tower4.svg" alt="Fast Tower">
+                    <div class="name">高速炮塔</div>
+                    <div class="desc">伤害:5 射速:0.3s<br>射速快、射程短</div>
+                </div>
+            </aside>
+
+            <main class="battlefield-container">
+                <div class="controls">
+                    <div class="status">状态: 准备部署炮塔</div>
+                    <button id="startBtn">开始战斗</button>
+                </div>
+
+                <div id="battlefield">
+                    <!-- 网格由 JavaScript 动态生成 -->
+                </div>
+            </main>
         </div>
-        
-        <!-- 中间战场 -->
-        <div class="battlefield" id="battlefield">
-            <!-- 5x5 网格将通过 JavaScript 动态生成 -->
+
+        <div class="legend">
+            <h3>游戏说明</h3>
+            <ul>
+                <li><strong>拖拽部署:</strong> 从左侧拖拽炮塔到战场网格</li>
+                <li><strong>移动炮塔:</strong> 拖拽已放置的炮塔到其他格子</li>
+                <li><strong>开始战斗:</strong> 点击按钮开始自动射击</li>
+                <li><strong>停止战斗:</strong> 再次点击按钮停止</li>
+                <li><strong>固定炮塔:</strong> 向特定方向持续射击</li>
+                <li><strong>旋转炮塔:</strong> 可以旋转到任意方向（需实现）</li>
+            </ul>
         </div>
-    </div>
-    
-    <div class="controls">
-        <button id="startBtn">开始战斗</button>
-        <span class="status">状态: 准备部署炮塔</span>
     </div>
 
     <script src="app.js"></script>
