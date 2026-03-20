@@ -99,7 +99,8 @@ const state = {
     },
     
     // 点击选择状态
-    selectedTowerType: null
+    selectedTowerType: null // 当前选中的炮塔类型（从侧边栏选择）
+};
 };
 
 // ============ DOM 元素 ============
@@ -501,136 +502,15 @@ function initBattlefield() {
         }
     }
     
-    // 绑定炮塔面板事件
+    // 绑定炮塔面板点击事件
     const towerItems = $$('.tower-item');
     towerItems.forEach(item => {
         item.addEventListener('click', handleTowerItemClick);
     });
     
-    }
-
-// ============ 拖拽处理 ============
-function handleDragStart(e) {
-    const towerItem = e.target.closest('.tower-item');
-    if (!towerItem) return;
-    
-    state.drag.active = true;
-    state.drag.sourceType = towerItem.dataset.tower;
-    state.drag.isMoving = false;
-    towerItem.style.opacity = '0.5';
-    e.dataTransfer.effectAllowed = 'copy';
+    // 初始化选中状态
+    state.selectedTowerType = null;
 }
-
-function handleDragOver(e) {
-    e.preventDefault();
-    const cell = e.target.closest('.cell');
-    if (cell) {
-        cell.classList.add('hovering');
-    }
-}
-
-function handleDragLeave(e) {
-    const cell = e.target.closest('.cell');
-    if (cell) {
-        cell.classList.remove('hovering');
-    }
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    const cell = e.target.closest('.cell');
-    if (!cell) return;
-    
-    cell.classList.remove('hovering');
-    const cellId = cell.dataset.cellId;
-    
-    if (!state.drag.active) return;
-    
-    // 检查格子是否已有炮塔
-    const existingTower = state.towers.get(cellId);
-    
-    if (existingTower) {
-        // 尝试交换（如果是从其他格子拖来的）
-        if (state.drag.isMoving) {
-            const sourceTower = state.drag.sourceTower;
-            if (sourceTower.cellId !== cellId) {
-                // 交换位置
-                state.towers.delete(sourceTower.cellId);
-                sourceTower.cellId = cellId;
-                state.towers.set(cellId, sourceTower);
-                
-                // 更新 DOM
-                const sourceCell = sourceTower.element.closest('.cell');
-                cell.appendChild(sourceTower.element);
-                cell.dataset.cellId = cellId;
-                sourceCell.dataset.cellId = sourceTower.cellId;
-            }
-            sourceTower.element.classList.remove('dragging');
-        }
-    } else {
-        // 放置新炮塔
-        if (state.drag.isMoving) {
-            // 移动已有炮塔
-            const sourceTower = state.drag.sourceTower;
-            state.towers.delete(sourceTower.cellId);
-            sourceTower.cellId = cellId;
-            state.towers.set(cellId, sourceTower);
-            cell.appendChild(sourceTower.element);
-            sourceTower.element.classList.remove('dragging');
-        } else {
-            // 新建炮塔
-            createTowerInCell(cellId, state.drag.sourceType);
-        }
-    }
-    
-        updateUI();
-}
-
-function replaceTowerInCell(cellId, newType, oldTower) {
-    state.towers.delete(cellId);
-    if (oldTower.element && oldTower.element.parentNode) {
-        oldTower.element.remove();
-    }
-    createTowerInCell(cellId, newType);
-}
-
-function createTowerInCell(cellId, type) {
-    const coords = getCellCoords(cellId);
-    const cell = elements.battlefield.children[coords.row * CONFIG.GRID_SIZE + coords.col];
-    
-    const towerElement = document.createElement('div');
-    towerElement.className = 'turret';
-    towerElement.dataset.type = type;
-        // 炮塔图标（SVG）
-    towerElement.innerHTML = `
-        <svg viewBox="0 0 60 60" width="100%" height="100%">
-            <circle cx="30" cy="30" r="25" fill="${CONFIG.TOWER_TYPES[type].color}" />
-            <polygon points="30,10 30,50 50,30" fill="#fff" />
-        </svg>
-    `;
-    
-    
-    
-    const tower = new Tower(cellId, type);
-    tower.element = towerElement;
-    state.towers.set(cellId, tower);
-    cell.appendChild(towerElement);
-    
-    // 扣除费用
-    state.game.money -= getTowerCost(type);
-    updateUI();
-}
-
-function resetDrag() {
-    state.drag.active = false;
-    state.drag.sourceType = null;
-    state.drag.isMoving = false;
-    state.drag.sourceTower = null;
-    
-    // 清除所有高亮
-    $$('.cell.hovering').forEach(c => c.classList.remove('hovering'));
-}
-
 
 // ============ 点击处理 ============
 function handleTowerItemClick(e) {
@@ -639,6 +519,7 @@ function handleTowerItemClick(e) {
     
     const towerType = towerItem.dataset.tower;
     
+    // 如果已经选中该类型，则取消选中
     if (state.selectedTowerType === towerType) {
         state.selectedTowerType = null;
         towerItem.classList.remove('selected');
@@ -647,12 +528,14 @@ function handleTowerItemClick(e) {
         return;
     }
     
+    // 选中新炮塔
     $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
     towerItem.classList.add('selected');
     state.selectedTowerType = towerType;
     
+    // 高亮可放置的格子
     updateCellHighlights();
-    updateStatus('选中: ' + CONFIG.TOWER_TYPES[towerType].name + ' - 点击战场格子部署');
+    updateStatus(`选中: ${CONFIG.TOWER_TYPES[towerType].name} - 点击战场格子部署`);
 }
 
 function handleCellClick(e) {
@@ -662,13 +545,27 @@ function handleCellClick(e) {
     const cellId = cell.dataset.cellId;
     const existingTower = state.towers.get(cellId);
     
+    // 如果点击的是已有炮塔且没有从侧边栏选择新炮塔
+    if (existingTower && !state.selectedTowerType) {
+        // 选中这个炮塔（用于移动）
+        clearCellHighlights();
+        cell.classList.add('selected');
+        state.selectedTowerType = existingTower.type;
+        updateStatus(`选中炮塔: ${CONFIG.TOWER_TYPES[existingTower.type].name} - 点击其他格子移动`);
+        return;
+    }
+    
+    // 如果没有选中炮塔类型
     if (!state.selectedTowerType) return;
     
     const selectedType = state.selectedTowerType;
-    const cost = getTowerCost(selectedType);
+    const selectedCost = getTowerCost(selectedType);
     
+    // 有选中的炮塔类型，检查操作
     if (existingTower) {
+        // 格子有炮塔，替换
         if (selectedType === existingTower.type) {
+            // 相同类型，取消选中
             state.selectedTowerType = null;
             clearCellHighlights();
             $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
@@ -676,13 +573,14 @@ function handleCellClick(e) {
             return;
         }
         
+        // 不同类型，检查金钱
         const oldCost = getTowerCost(existingTower.type);
-        const diff = cost - oldCost;
+        const costDiff = selectedCost - oldCost;
         
-        if (diff > 0) {
-            if (state.game.money >= diff) {
-                if (confirm('替换需要额外花费 $' + diff + '，确定吗？')) {
-                    state.game.money -= diff;
+        if (costDiff > 0) {
+            if (state.game.money >= costDiff) {
+                if (confirm(`替换炮塔需要额外花费 $${costDiff}，确定吗？`)) {
+                    state.game.money -= costDiff;
                     replaceTowerInCell(cellId, selectedType, existingTower);
                     updateStatus('替换成功！');
                 }
@@ -691,27 +589,42 @@ function handleCellClick(e) {
                 return;
             }
         } else {
-            state.game.money += Math.abs(diff);
+            // 新炮塔更便宜，退差价
+            state.game.money += Math.abs(costDiff);
             replaceTowerInCell(cellId, selectedType, existingTower);
-            updateStatus('替换成功！返还 $' + Math.abs(diff));
+            updateStatus('替换成功！获得差价返还');
         }
     } else {
-        if (state.game.money >= cost) {
-            state.game.money -= cost;
+        // 空格子，新建炮塔
+        if (state.game.money >= selectedCost) {
+            state.game.money -= selectedCost;
             createTowerInCell(cellId, selectedType);
-            updateStatus('部署成功！');
+            updateStatus(`部署 ${CONFIG.TOWER_TYPES[selectedType].name}！`);
         } else {
             alert('金钱不足！');
             return;
         }
     }
     
+    // 保持选中状态，方便连续部署
+    // 不清除 state.selectedTowerType，也不取消侧边栏选中
     updateCellHighlights();
 }
 
+function getTowerCost(type) {
+    // 基础造价（可以根据类型调整）
+    const costs = {
+        tower1: 50,
+        tower2: 75,
+        tower3: 150,
+        tower4: 100
+    };
+    return costs[type] || 50;
+}
+
 function clearCellHighlights() {
-    $$('.cell.hovering, .cell.selected, .cell.valid, .cell.invalid').forEach(c => {
-        c.classList.remove('hovering', 'selected', 'valid', 'invalid');
+    $$('.cell.hovering, .cell.selected, .cell.valid, .cell.invalid').forEach(cell => {
+        cell.classList.remove('hovering', 'selected', 'valid', 'invalid');
     });
 }
 
@@ -723,27 +636,83 @@ function updateCellHighlights() {
     const cost = getTowerCost(state.selectedTowerType);
     const canAfford = state.game.money >= cost;
     
+    // 高亮可放置的格子
     for (let row = 0; row < CONFIG.GRID_SIZE; row++) {
         for (let col = 0; col < CONFIG.GRID_SIZE; col++) {
             const cellId = getCellId(row, col);
-            const cell = document.querySelector('[data-cell-id="' + cellId + '"]');
+            const cell = document.querySelector(`[data-cell-id="${cellId}"]`);
             if (!cell) continue;
             
             const hasTower = state.towers.has(cellId);
             
             if (hasTower) {
-                if (canAfford) {
+                // 有炮塔的格子，如果有炮塔且金钱足够替换，标记为 valid
+                const existingTower = state.towers.get(cellId);
+                const replaceCost = getTowerCost(state.selectedTowerType) - getTowerCost(existingTower.type);
+                if (canAfford && replaceCost <= 0) {
+                    cell.classList.add('valid');
+                } else if (canAfford && state.game.money >= getTowerCost(state.selectedTowerType)) {
+                    // 可以替换但需要额外花费
                     cell.classList.add('valid');
                 } else {
                     cell.classList.add('invalid');
                 }
             } else if (canAfford) {
+                // 空格子且金钱足够
                 cell.classList.add('valid');
             } else {
                 cell.classList.add('invalid');
             }
         }
     }
+}
+    
+    updateUI();
+}
+
+function createTowerInCell(cellId, type) {
+    const coords = getCellCoords(cellId);
+    const cell = elements.battlefield.children[coords.row * CONFIG.GRID_SIZE + coords.col];
+    
+    const towerElement = document.createElement('div');
+    towerElement.className = 'turret';
+    towerElement.dataset.type = type;
+    
+    // 炮塔图标（SVG）
+    towerElement.innerHTML = `
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+            <circle cx="30" cy="30" r="25" fill="${CONFIG.TOWER_TYPES[type].color}" />
+            <polygon points="30,10 30,50 50,30" fill="#fff" />
+        </svg>
+    `;
+    
+    // 点击炮塔选中它（用于移动）
+    towerElement.addEventListener('click', (e) => {
+        e.stopPropagation(); // 防止触发格子点击
+        const tower = state.towers.get(cellId);
+        if (tower) {
+            clearCellHighlights();
+            cell.classList.add('selected');
+            state.selectedTowerType = tower.type;
+            updateStatus(`选中炮塔: ${CONFIG.TOWER_TYPES[tower.type].name} - 点击其他格子移动`);
+        }
+    });
+    
+    const tower = new Tower(cellId, type);
+    tower.element = towerElement;
+    state.towers.set(cellId, tower);
+    cell.appendChild(towerElement);
+}
+
+function replaceTowerInCell(cellId, newType, oldTower) {
+    // 移除旧炮塔
+    state.towers.delete(cellId);
+    if (oldTower.element && oldTower.element.parentNode) {
+        oldTower.element.remove();
+    }
+    
+    // 创建新炮塔
+    createTowerInCell(cellId, newType);
 }
 
 // ============ 游戏循环 ============
@@ -955,12 +924,6 @@ function updateStatus(customMsg) {
 function updateUI() {
     updateStatus();
 }
-
-function getTowerCost(type) {
-    const costs = { tower1: 50, tower2: 75, tower3: 150, tower4: 100 };
-    return costs[type] || 50;
-}
-
 
 // ============ 事件绑定 ============
 function bindEvents() {

@@ -98,8 +98,12 @@ const state = {
         lastTime: 0
     },
     
-    // 点击选择状态
-    selectedTowerType: null
+    drag: {
+        active: false,
+        sourceType: null,
+        sourceCellId: null,
+        isMoving: false
+    }
 };
 
 // ============ DOM 元素 ============
@@ -495,7 +499,9 @@ function initBattlefield() {
             cell.dataset.col = col;
             cell.dataset.cellId = cellId;
             
-            cell.addEventListener('click', handleCellClick);
+            cell.addEventListener('dragover', handleDragOver);
+            cell.addEventListener('dragleave', handleDragLeave);
+            cell.addEventListener('drop', handleDrop);
             
             battlefield.appendChild(cell);
         }
@@ -504,10 +510,12 @@ function initBattlefield() {
     // 绑定炮塔面板事件
     const towerItems = $$('.tower-item');
     towerItems.forEach(item => {
-        item.addEventListener('click', handleTowerItemClick);
+        item.addEventListener('dragstart', handleDragStart);
     });
     
-    }
+    // 初始化拖拽状态
+    state.drag.active = false;
+}
 
 // ============ 拖拽处理 ============
 function handleDragStart(e) {
@@ -583,15 +591,8 @@ function handleDrop(e) {
         }
     }
     
-        updateUI();
-}
-
-function replaceTowerInCell(cellId, newType, oldTower) {
-    state.towers.delete(cellId);
-    if (oldTower.element && oldTower.element.parentNode) {
-        oldTower.element.remove();
-    }
-    createTowerInCell(cellId, newType);
+    resetDrag();
+    updateUI();
 }
 
 function createTowerInCell(cellId, type) {
@@ -601,7 +602,9 @@ function createTowerInCell(cellId, type) {
     const towerElement = document.createElement('div');
     towerElement.className = 'turret';
     towerElement.dataset.type = type;
-        // 炮塔图标（SVG）
+    towerElement.setAttribute('draggable', 'true');
+    
+    // 炮塔图标（SVG）
     towerElement.innerHTML = `
         <svg viewBox="0 0 60 60" width="100%" height="100%">
             <circle cx="30" cy="30" r="25" fill="${CONFIG.TOWER_TYPES[type].color}" />
@@ -609,16 +612,23 @@ function createTowerInCell(cellId, type) {
         </svg>
     `;
     
+    towerElement.addEventListener('dragstart', (e) => {
+        towerElement.classList.add('dragging');
+        state.drag.active = true;
+        state.drag.sourceType = type;
+        state.drag.isMoving = true;
+        state.drag.sourceTower = Object.values(state.towers).find(t => t.element === towerElement);
+        e.dataTransfer.effectAllowed = 'move';
+    });
     
+    towerElement.addEventListener('dragend', () => {
+        towerElement.classList.remove('dragging');
+    });
     
     const tower = new Tower(cellId, type);
     tower.element = towerElement;
     state.towers.set(cellId, tower);
     cell.appendChild(towerElement);
-    
-    // 扣除费用
-    state.game.money -= getTowerCost(type);
-    updateUI();
 }
 
 function resetDrag() {
@@ -629,121 +639,6 @@ function resetDrag() {
     
     // 清除所有高亮
     $$('.cell.hovering').forEach(c => c.classList.remove('hovering'));
-}
-
-
-// ============ 点击处理 ============
-function handleTowerItemClick(e) {
-    const towerItem = e.target.closest('.tower-item');
-    if (!towerItem) return;
-    
-    const towerType = towerItem.dataset.tower;
-    
-    if (state.selectedTowerType === towerType) {
-        state.selectedTowerType = null;
-        towerItem.classList.remove('selected');
-        clearCellHighlights();
-        updateStatus('准备部署炮塔');
-        return;
-    }
-    
-    $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
-    towerItem.classList.add('selected');
-    state.selectedTowerType = towerType;
-    
-    updateCellHighlights();
-    updateStatus('选中: ' + CONFIG.TOWER_TYPES[towerType].name + ' - 点击战场格子部署');
-}
-
-function handleCellClick(e) {
-    const cell = e.target.closest('.cell');
-    if (!cell) return;
-    
-    const cellId = cell.dataset.cellId;
-    const existingTower = state.towers.get(cellId);
-    
-    if (!state.selectedTowerType) return;
-    
-    const selectedType = state.selectedTowerType;
-    const cost = getTowerCost(selectedType);
-    
-    if (existingTower) {
-        if (selectedType === existingTower.type) {
-            state.selectedTowerType = null;
-            clearCellHighlights();
-            $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
-            updateStatus('准备部署炮塔');
-            return;
-        }
-        
-        const oldCost = getTowerCost(existingTower.type);
-        const diff = cost - oldCost;
-        
-        if (diff > 0) {
-            if (state.game.money >= diff) {
-                if (confirm('替换需要额外花费 $' + diff + '，确定吗？')) {
-                    state.game.money -= diff;
-                    replaceTowerInCell(cellId, selectedType, existingTower);
-                    updateStatus('替换成功！');
-                }
-            } else {
-                alert('金钱不足！');
-                return;
-            }
-        } else {
-            state.game.money += Math.abs(diff);
-            replaceTowerInCell(cellId, selectedType, existingTower);
-            updateStatus('替换成功！返还 $' + Math.abs(diff));
-        }
-    } else {
-        if (state.game.money >= cost) {
-            state.game.money -= cost;
-            createTowerInCell(cellId, selectedType);
-            updateStatus('部署成功！');
-        } else {
-            alert('金钱不足！');
-            return;
-        }
-    }
-    
-    updateCellHighlights();
-}
-
-function clearCellHighlights() {
-    $$('.cell.hovering, .cell.selected, .cell.valid, .cell.invalid').forEach(c => {
-        c.classList.remove('hovering', 'selected', 'valid', 'invalid');
-    });
-}
-
-function updateCellHighlights() {
-    clearCellHighlights();
-    
-    if (!state.selectedTowerType) return;
-    
-    const cost = getTowerCost(state.selectedTowerType);
-    const canAfford = state.game.money >= cost;
-    
-    for (let row = 0; row < CONFIG.GRID_SIZE; row++) {
-        for (let col = 0; col < CONFIG.GRID_SIZE; col++) {
-            const cellId = getCellId(row, col);
-            const cell = document.querySelector('[data-cell-id="' + cellId + '"]');
-            if (!cell) continue;
-            
-            const hasTower = state.towers.has(cellId);
-            
-            if (hasTower) {
-                if (canAfford) {
-                    cell.classList.add('valid');
-                } else {
-                    cell.classList.add('invalid');
-                }
-            } else if (canAfford) {
-                cell.classList.add('valid');
-            } else {
-                cell.classList.add('invalid');
-            }
-        }
-    }
 }
 
 // ============ 游戏循环 ============
@@ -955,12 +850,6 @@ function updateStatus(customMsg) {
 function updateUI() {
     updateStatus();
 }
-
-function getTowerCost(type) {
-    const costs = { tower1: 50, tower2: 75, tower3: 150, tower4: 100 };
-    return costs[type] || 50;
-}
-
 
 // ============ 事件绑定 ============
 function bindEvents() {
