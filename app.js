@@ -659,6 +659,12 @@ function handleCellClick(e) {
     const cell = e.target.closest('.cell');
     if (!cell) return;
     
+    // 战斗进行中不允许修改炮塔
+    if (state.game.running) {
+        alert('战斗进行中，无法修改炮塔布局！请先停止战斗。');
+        return;
+    }
+    
     const cellId = cell.dataset.cellId;
     const existingTower = state.towers.get(cellId);
     
@@ -882,11 +888,11 @@ function startGame() {
         return;
     }
     
-    // 重置游戏状态（保留炮塔布局）
+    // 重置游戏状态（保留炮塔布局和剩余金钱）
     state.game.running = true;
     state.game.wave = 1;
     state.game.lives = CONFIG.STARTING_LIVES;
-    state.game.money = CONFIG.STARTING_MONEY;
+    // 保留部署阶段剩余的金钱，不重置
     state.game.score = 0;
     state.game.enemiesKilled = 0;
     state.game.enemiesSpawned = 0;
@@ -905,7 +911,17 @@ function startGame() {
 function stopGame() {
     state.game.running = false;
     elements.startBtn.textContent = '开始战斗';
-    updateStatus('战斗已停止');
+    // 停止时重置部分状态，保留金钱（剩余）和炮塔布局
+    state.game.wave = 1;
+    state.game.lives = CONFIG.STARTING_LIVES;
+    state.game.score = 0;
+    state.game.enemiesKilled = 0;
+    state.game.enemiesSpawned = 0;
+    state.game.spawnTimer = 0;
+    state.enemies = [];
+    state.bullets = [];
+    state.particles = [];
+    updateStatus('战斗已停止，可以调整炮塔布局');
 }
 
 function checkWaveComplete() {
