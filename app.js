@@ -9,6 +9,31 @@ const CONFIG = {
     CELL_GAP: 4,
     GAME_TICK: 16, // ~60fps
     
+    // 技能配置
+    SKILLS: {
+        airstrike: {
+            name: '空袭',
+            cooldown: 30000,      // 30秒
+            cost: 200,
+            damage: 500,
+            radius: 150
+        },
+        frost: {
+            name: '冰冻',
+            cooldown: 60000,      // 60秒
+            cost: 150,
+            duration: 3000,       // 冰冻3秒
+            slowFactor: 0.1       // 10%速度
+        }
+    },
+    
+    // 炮塔升级配置
+    TOWER_UPGRADE: {
+        multiplier: 1.5,
+        maxLevel: 3,
+        sellRate: 0.7
+    },
+    
     // 炮塔类型配置
     TOWER_TYPES: {
         tower1: {
@@ -99,7 +124,13 @@ const state = {
     },
     
     // 点击选择状态
-    selectedTowerType: null
+    selectedTowerType: null,
+    
+    // 技能状态
+    skills: {
+        airstrike: { ready: true, lastUsed: 0 },
+        frost: { ready: true, lastUsed: 0 }
+    }
 };
 
 // ============ DOM 元素 ============
@@ -228,6 +259,8 @@ class Tower {
         this.target = null;
         this.rotation = 0;
         this.element = null;
+        this.level = 1;
+        this.totalInvested = getTowerCost(type);
     }
     
     getCell() {
@@ -835,6 +868,7 @@ function updateSpawning(currentTime) {
             state.enemies.push(new Enemy(state.game.wave));
             state.game.enemiesSpawned++;
             updateUI();
+            updateSkillCooldowns(); // 每秒也更新技能冷却
         }
         state.game.spawnTimer = spawnInterval(state.game.wave);
     } else {
@@ -888,6 +922,9 @@ function startGame() {
         return;
     }
     
+    // 显示技能栏
+    document.getElementById('skillsBar').style.display = 'flex';
+    
     // 重置游戏状态（保留炮塔布局和剩余金钱）
     state.game.running = true;
     state.game.wave = 1;
@@ -906,11 +943,15 @@ function startGame() {
     elements.startBtn.textContent = '停止战斗';
     updateStatus();
     requestAnimationFrame(gameLoop);
+    // 启动技能冷却检查
+    checkSkillCooldowns();
 }
 
 function stopGame() {
     state.game.running = false;
     elements.startBtn.textContent = '开始战斗';
+    // 隐藏技能栏
+    document.getElementById('skillsBar').style.display = 'none';
     // 停止时重置部分状态，保留金钱（剩余）和炮塔布局
     state.game.wave = 1;
     state.game.lives = CONFIG.STARTING_LIVES;
@@ -977,6 +1018,112 @@ function getTowerCost(type) {
     return costs[type] || 50;
 }
 
+
+
+// ============ 炮塔菜单 ============
+let currentMenu = null;
+
+function showTowerMenu(e, cellId) {
+    const tower = state.towers.get(cellId);
+    if (!tower) return;
+    
+    hideTowerMenu();
+    
+    const menu = document.createElement('div');
+    menu.className = 'tower-menu';
+    menu.style.cssText = 'position: fixed; left:' + e.pageX + 'px; top:' + e.pageY + 'px; background: rgba(30,40,70,0.95); border: 2px solid #4ecca3; border-radius: 8px; padding: 10px 0; min-width: 150px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.5);';
+    
+    const config = CONFIG.TOWER_TYPES[tower.type];
+    const upgradeCost = Math.floor(getTowerCost(tower.type) * CONFIG.TOWER_UPGRADE.multiplier);
+    const sellValue = Math.floor(tower.totalInvested * CONFIG.TOWER_UPGRADE.sellRate);
+    
+    const title = document.createElement('div');
+    title.textContent = config.name + ' Lv.' + tower.level + '/' + CONFIG.TOWER_UPGRADE.maxLevel;
+    title.style.cssText = 'color:#4ecca3;padding:5px 15px;font-weight:bold;border-bottom:1px solid #4ecca340;margin-bottom:5px;';
+    menu.appendChild(title);
+    
+    // 升级按钮
+    if (tower.level < CONFIG.TOWER_UPGRADE.maxLevel) {
+        const upgradeBtn = document.createElement('button');
+        upgradeBtn.textContent = '升级 ($' + upgradeCost + ')';
+        upgradeBtn.style.cssText = 'display:block;width:100%;padding:8px 15px;background:rgba(78,204,163,0.2);color:#4ecca3;border:none;text-align:left;cursor:pointer;font-size:14px;';
+        upgradeBtn.onclick = () => { upgradeTower(cellId, upgradeCost); };
+        menu.appendChild(upgradeBtn);
+    }
+    
+    // 出售按钮
+    const sellBtn = document.createElement('button');
+    sellBtn.textContent = '出售 (+$' + sellValue + ')';
+    sellBtn.style.cssText = 'display:block;width:100%;padding:8px 15px;background:rgba(244,67,54,0.2);color:#f44336;border:none;text-align:left;cursor:pointer;font-size:14px;';
+    sellBtn.onclick = () => { sellTower(cellId, sellValue); };
+    menu.appendChild(sellBtn);
+    
+    document.body.appendChild(menu);
+    currentMenu = menu;
+    
+    // 点击外部关闭
+    setTimeout(() => {
+        document.addEventListener('click', closeMenuOnClickOutside);
+    }, 0);
+}
+
+function closeMenuOnClickOutside(e) {
+    if (currentMenu && !currentMenu.contains(e.target)) {
+        hideTowerMenu();
+    }
+}
+
+function hideTowerMenu() {
+    if (currentMenu) {
+        currentMenu.remove();
+        currentMenu = null;
+    }
+    document.removeEventListener('click', closeMenuOnClickOutside);
+}
+
+function upgradeTower(cellId, cost) {
+    if (state.game.money < cost) {
+        alert('金钱不足！');
+        hideTowerMenu();
+        return;
+    }
+    
+    state.game.money -= cost;
+    
+    const tower = state.towers.get(cellId);
+    if (!tower) return;
+    
+    tower.level++;
+    tower.totalInvested += cost;
+    
+    // 升级属性（基于升级倍率）
+    const config = CONFIG.TOWER_TYPES[tower.type];
+    config.damage = Math.floor(config.damage * CONFIG.TOWER_UPGRADE.multiplier);
+    config.fireRate = Math.max(100, Math.floor(config.fireRate / CONFIG.TOWER_UPGRADE.multiplier));
+    config.range = Math.floor(config.range * CONFIG.TOWER_UPGRADE.multiplier);
+    
+    audio.playUpgrade();
+    updateStatus(config.name + ' 升级到 Lv.' + tower.level + '！');
+    updateCellHighlights();
+    hideTowerMenu();
+    updateUI();
+}
+
+function sellTower(cellId, value) {
+    const tower = state.towers.get(cellId);
+    if (!tower) return;
+    
+    state.game.money += value;
+    state.towers.delete(cellId);
+    if (tower.element && tower.element.parentNode) {
+        tower.element.remove();
+    }
+    
+    updateStatus('出售 ' + CONFIG.TOWER_TYPES[tower.type].name + '，获得 $' + value);
+    updateCellHighlights();
+    hideTowerMenu();
+    updateUI();
+}
 
 // ============ 事件绑定 ============
 function bindEvents() {
