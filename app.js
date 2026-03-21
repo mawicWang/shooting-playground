@@ -4,6 +4,11 @@
 
 // ============ 配置常量 ============
 const CONFIG = {
+
+
+// ============ 本地存储 ============
+
+
     GRID_SIZE: 5,
     CELL_MIN_SIZE: 80,
     CELL_GAP: 4,
@@ -130,6 +135,37 @@ const state = {
     skills: {
         airstrike: { ready: true, lastUsed: 0 },
         frost: { ready: true, lastUsed: 0 }
+    }
+};
+
+const Storage = {
+    HIGH_SCORE_KEY: 'tower_defense_high_score',
+    MAX_WAVE_KEY: 'tower_defense_max_wave',
+    
+    getHighScore() {
+        return parseInt(localStorage.getItem(this.HIGH_SCORE_KEY)) || 0;
+    },
+    
+    saveHighScore(score) {
+        const current = this.getHighScore();
+        if (score > current) {
+            localStorage.setItem(this.HIGH_SCORE_KEY, score);
+            return true;
+        }
+        return false;
+    },
+    
+    getMaxWave() {
+        return parseInt(localStorage.getItem(this.MAX_WAVE_KEY)) || 0;
+    },
+    
+    saveMaxWave(wave) {
+        const current = this.getMaxWave();
+        if (wave > current) {
+            localStorage.setItem(this.MAX_WAVE_KEY, wave);
+            return true;
+        }
+        return false;
     }
 };
 
@@ -994,6 +1030,10 @@ function gameOver() {
     state.game.running = false;
     updateStatus(`游戏结束！最终得分: ${state.game.score}`);
     elements.startBtn.textContent = '重新开始';
+    // 保存记录
+    Storage.saveHighScore(state.game.score);
+    Storage.saveMaxWave(state.game.wave - 1);
+    audio.playExplosion();
     // 这里可以显示游戏结束界面
 }
 
@@ -1001,6 +1041,10 @@ function gameWin() {
     state.game.running = false;
     updateStatus(`胜利！所有波次完成！得分: ${state.game.score}`);
     elements.startBtn.textContent = '重新开始';
+    // 保存记录
+    Storage.saveHighScore(state.game.score);
+    Storage.saveMaxWave(CONFIG.MAX_WAVES);
+    audio.playVictory();
 }
 
 // ============ UI 更新 ============
@@ -1138,6 +1182,28 @@ function bindEvents() {
             startGame();
         }
     });
+    
+    // 菜单按钮绑定
+    const menuBtn = document.getElementById('menuBtn');
+    if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+            const menuOverlay = document.getElementById('menuOverlay');
+            const isOpen = menuOverlay.style.display === 'flex';
+            
+            if (isOpen) {
+                menuOverlay.style.display = 'none';
+                menuBtn.textContent = '☰';
+            } else {
+                // 更新统计数据
+                if (typeof Storage !== 'undefined' && Storage.getHighScore) {
+                    document.getElementById('menuHighScore').textContent = Storage.getHighScore();
+                    document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
+                }
+                menuOverlay.style.display = 'flex';
+                menuBtn.textContent = '×';
+            }
+        });
+    }
     
     window.addEventListener('resize', () => {
         // 重新计算网格但不重置炮塔（需要更复杂的处理）

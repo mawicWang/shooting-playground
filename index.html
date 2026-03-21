@@ -32,6 +32,37 @@
 
         /* 顶部状态栏 */
         .status-bar {
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        #startBtn {
+            background: linear-gradient(145deg, #4ecca3, #3db892);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.3);
+        }
+
+        #startBtn:hover {
+            background: linear-gradient(145deg, #3db892, #2da881);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+        }
+
+        #startBtn:active {
+            transform: translateY(0);
+        }
+
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -415,6 +446,37 @@
             }
 
             .status-bar {
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        #startBtn {
+            background: linear-gradient(145deg, #4ecca3, #3db892);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.3);
+        }
+
+        #startBtn:hover {
+            background: linear-gradient(145deg, #3db892, #2da881);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+        }
+
+        #startBtn:active {
+            transform: translateY(0);
+        }
+
                 padding: 10px 15px;
                 font-size: 14px;
             }
@@ -449,6 +511,37 @@
 
         @media (max-height: 600px) {
             .status-bar {
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        #startBtn {
+            background: linear-gradient(145deg, #4ecca3, #3db892);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.3);
+        }
+
+        #startBtn:hover {
+            background: linear-gradient(145deg, #3db892, #2da881);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 204, 163, 0.4);
+        }
+
+        #startBtn:active {
+            transform: translateY(0);
+        }
+
                 padding: 8px 15px;
                 font-size: 13px;
                 gap: 8px;
@@ -481,6 +574,11 @@
             <div class="status-item">🌊 <span id="waveDisplay">1/20</span></div>
             <div class="status-item">⭐ <span id="scoreDisplay">0</span></div>
             <div class="status-item">🏆 <span id="highScoreDisplay">0</span></div>
+        </div>
+
+        <!-- 控制栏 -->
+        <div class="controls">
+            <button id="startBtn">开始战斗</button>
         </div>
 
         <!-- 中间游戏区域 -->
@@ -604,36 +702,5 @@
     </div>
 
     <script src="app.js"></script>
-    <script>
-        // 菜单控制
-        document.addEventListener('DOMContentLoaded', () => {
-            const menuBtn = document.getElementById('menuBtn');
-            const menuOverlay = document.getElementById('menuOverlay');
-            // 切换菜单显示
-            menuBtn.addEventListener('click', () => {
-                const isOpen = menuOverlay.style.display === 'flex';
-                if (isOpen) {
-                    menuOverlay.style.display = 'none';
-                    menuBtn.textContent = '☰';
-                } else {
-                    // 更新统计
-                    if (typeof Storage !== 'undefined') {
-                        document.getElementById('menuHighScore').textContent = Storage.getHighScore();
-                        document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
-                    }
-                    menuOverlay.style.display = 'flex';
-                    menuBtn.textContent = '×';
-                }
-            });
-            
-            // 点击遮罩关闭
-            menuOverlay.addEventListener('click', (e) => {
-                if (e.target === menuOverlay) {
-                    menuOverlay.style.display = 'none';
-                    menuBtn.textContent = '☰';
-                }
-            });
-        });
-    </script>
 </body>
 </html>
