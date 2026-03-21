@@ -353,6 +353,14 @@
             font-size: 1.5em;
         }
 
+        .close-btn {
+            background: none;
+            border: none;
+            color: #4ecca3;
+            font-size: 2em;
+            cursor: pointer;
+            line-height: 1;
+        }
 
         .menu-section {
             margin-bottom: 25px;
@@ -601,7 +609,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             const menuBtn = document.getElementById('menuBtn');
             const menuOverlay = document.getElementById('menuOverlay');
-            
             // 切换菜单显示
             menuBtn.addEventListener('click', () => {
                 const isOpen = menuOverlay.style.display === 'flex';
@@ -610,8 +617,10 @@
                     menuBtn.textContent = '☰';
                 } else {
                     // 更新统计
-                    document.getElementById('menuHighScore').textContent = Storage.getHighScore();
-                    document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
+                    if (typeof Storage !== 'undefined') {
+                        document.getElementById('menuHighScore').textContent = Storage.getHighScore();
+                        document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
+                    }
                     menuOverlay.style.display = 'flex';
                     menuBtn.textContent = '×';
                 }
