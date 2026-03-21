@@ -609,27 +609,25 @@
         document.addEventListener('DOMContentLoaded', () => {
             const menuBtn = document.getElementById('menuBtn');
             const menuOverlay = document.getElementById('menuOverlay');
+            const closeBtn = document.getElementById('closeMenu');
             
-            // 切换菜单显示
+            // 点击菜单按钮
             menuBtn.addEventListener('click', () => {
-                const isOpen = menuOverlay.style.display === 'flex';
-                if (isOpen) {
-                    menuOverlay.style.display = 'none';
-                    menuBtn.textContent = '☰';
-                } else {
-                    // 更新统计
-                    document.getElementById('menuHighScore').textContent = Storage.getHighScore();
-                    document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
-                    menuOverlay.style.display = 'flex';
-                    menuBtn.textContent = '×';
-                }
+                menuOverlay.style.display = 'flex';
+                // 更新统计
+                document.getElementById('menuHighScore').textContent = Storage.getHighScore();
+                document.getElementById('menuMaxWave').textContent = Storage.getMaxWave();
+            });
+            
+            // 关闭菜单
+            closeBtn.addEventListener('click', () => {
+                menuOverlay.style.display = 'none';
             });
             
             // 点击遮罩关闭
             menuOverlay.addEventListener('click', (e) => {
                 if (e.target === menuOverlay) {
                     menuOverlay.style.display = 'none';
-                    menuBtn.textContent = '☰';
                 }
             });
         });
