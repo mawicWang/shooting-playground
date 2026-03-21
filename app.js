@@ -498,8 +498,7 @@ class Enemy {
     
     die() {
         this.alive = false;
-        state.game.money += this.reward;
-        state.game.score += this.reward * 10;
+                state.game.score += this.reward * 10;
         state.game.enemiesKilled++;
         createParticles(this.x, this.y, this.color, 15);
         updateUI();
@@ -747,28 +746,25 @@ function handleCellClick(e) {
     const selectedType = state.selectedTowerType;
     
     if (existingTower) {
-        // 有炮塔，直接替换（沙盒模式免费替换）
+        // 有炮塔，直接替换（沙盒模式免费）
         if (selectedType === existingTower.type) {
-            // 相同类型，取消选中
             state.selectedTowerType = null;
             clearCellHighlights();
             $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
             updateStatus('准备部署炮塔');
             return;
         }
-        
-        // 替换炮塔
         replaceTowerInCell(cellId, selectedType, existingTower);
         updateStatus('替换成功！');
     } else {
-        // 空格子，直接部署（沙盒模式免费）
+        // 空格子，直接部署
         createTowerInCell(cellId, selectedType);
         updateStatus('部署成功！');
     }
     
-    // 保持选中状态，方便连续部署
     updateCellHighlights();
 }
+
 
 
 function clearCellHighlights() {
@@ -776,6 +772,7 @@ function clearCellHighlights() {
         c.classList.remove('hovering', 'selected', 'valid', 'invalid');
     });
 }
+
 
 
 function updateCellHighlights() {
@@ -788,17 +785,11 @@ function updateCellHighlights() {
         for (let col = 0; col < CONFIG.GRID_SIZE; col++) {
             const cellId = getCellId(row, col);
             const cell = document.querySelector('[data-cell-id="' + cellId + '"]');
-            if (!cell) continue;
-            
-            const hasTower = state.towers.has(cellId);
-            if (hasTower) {
-                cell.classList.add('valid'); // 有炮塔也允许替换
-            } else {
-                cell.classList.add('valid'); // 空格子可部署
-            }
+            if (cell) cell.classList.add('valid');
         }
     }
 }
+
 
 
 // ============ 游戏循环 ============
@@ -986,8 +977,7 @@ function checkWaveComplete() {
     if (state.game.enemiesSpawned >= totalEnemies && state.enemies.length === 0) {
         // 波次完成
         state.game.wave++;
-        state.game.money += CONFIG.MONEY_PER_WAVE;
-        
+                
         if (state.game.wave > CONFIG.MAX_WAVES) {
             gameWin();
             return;
@@ -1007,7 +997,7 @@ function gameOver() {
     updateStatus(`游戏结束！最终得分: ${state.game.score}`);
     elements.startBtn.textContent = '重新开始';
     // 保存记录
-    Storage.saveHighScore(state.game.score);
+    
     Storage.saveMaxWave(state.game.wave - 1);
     audio.playExplosion();
     // 这里可以显示游戏结束界面
@@ -1018,7 +1008,7 @@ function gameWin() {
     updateStatus(`胜利！所有波次完成！得分: ${state.game.score}`);
     elements.startBtn.textContent = '重新开始';
     // 保存记录
-    Storage.saveHighScore(state.game.score);
+    
     Storage.saveMaxWave(CONFIG.MAX_WAVES);
     audio.playVictory();
 }
@@ -1114,49 +1104,7 @@ function hideTowerMenu() {
     document.removeEventListener('click', closeMenuOnClickOutside);
 }
 
-function upgradeTower(cellId, cost) {
-    if (state.game.money < cost) {
-        alert('金钱不足！');
-        hideTowerMenu();
-        return;
-    }
-    
-    state.game.money -= cost;
-    
-    const tower = state.towers.get(cellId);
-    if (!tower) return;
-    
-    tower.level++;
-    tower.totalInvested += cost;
-    
-    // 升级属性（基于升级倍率）
-    const config = CONFIG.TOWER_TYPES[tower.type];
-    config.damage = Math.floor(config.damage * CONFIG.TOWER_UPGRADE.multiplier);
-    config.fireRate = Math.max(100, Math.floor(config.fireRate / CONFIG.TOWER_UPGRADE.multiplier));
-    config.range = Math.floor(config.range * CONFIG.TOWER_UPGRADE.multiplier);
-    
-    audio.playUpgrade();
-    updateStatus(config.name + ' 升级到 Lv.' + tower.level + '！');
-    updateCellHighlights();
-    hideTowerMenu();
-    updateUI();
-}
 
-function sellTower(cellId, value) {
-    const tower = state.towers.get(cellId);
-    if (!tower) return;
-    
-    state.game.money += value;
-    state.towers.delete(cellId);
-    if (tower.element && tower.element.parentNode) {
-        tower.element.remove();
-    }
-    
-    updateStatus('出售 ' + CONFIG.TOWER_TYPES[tower.type].name + '，获得 $' + value);
-    updateCellHighlights();
-    hideTowerMenu();
-    updateUI();
-}
 
 // ============ 事件绑定 ============
 function bindEvents() {
