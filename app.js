@@ -137,8 +137,12 @@ const state = {
 const elements = {
     battlefield: null,
     startBtn: null,
-    status: null,
-    stats: {}
+    livesDisplay: null,
+    moneyDisplay: null,
+    waveDisplay: null,
+    scoreDisplay: null,
+    highScoreDisplay: null,
+    skillsBar: null
 };
 
 // ============ 实用函数 ============
@@ -923,7 +927,7 @@ function startGame() {
     }
     
     // 显示技能栏
-    document.getElementById('skillsBar').style.display = 'flex';
+    if (elements.skillsBar) elements.skillsBar.style.display = 'flex';
     
     // 重置游戏状态（保留炮塔布局和剩余金钱）
     state.game.running = true;
@@ -951,7 +955,7 @@ function stopGame() {
     state.game.running = false;
     elements.startBtn.textContent = '开始战斗';
     // 隐藏技能栏
-    document.getElementById('skillsBar').style.display = 'none';
+    if (elements.skillsBar) elements.skillsBar.style.display = 'none';
     // 停止时重置部分状态，保留金钱（剩余）和炮塔布局
     state.game.wave = 1;
     state.game.lives = CONFIG.STARTING_LIVES;
@@ -1146,7 +1150,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 获取 DOM 元素
     elements.battlefield = $('#battlefield');
     elements.startBtn = $('#startBtn');
-    elements.status = $('.status');
+    elements.livesDisplay = $('#livesDisplay');
+    elements.moneyDisplay = $('#moneyDisplay');
+    elements.waveDisplay = $('#waveDisplay');
+    elements.scoreDisplay = $('#scoreDisplay');
+    elements.highScoreDisplay = $('#highScoreDisplay');
+    elements.skillsBar = $('#skillsBar');
     
     if (!elements.battlefield || !elements.startBtn) {
         console.error('Missing required DOM elements');
