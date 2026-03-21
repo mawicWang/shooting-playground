@@ -1,3 +1,7 @@
 node_modules/
 test-results/
 playwright-report/
+
+# 测试报告
+test-results/
+playwright-report/

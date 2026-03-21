@@ -103,8 +103,8 @@ const CONFIG = {
     MAX_WAVES: 20,
     
     // 玩家资源
-    STARTING_LIVES: 5,
-    STARTING_MONEY: 200,
+    STARTING_LIVES: 5, // 保留生命值
+    STARTING_MONEY: 0, // 沙盒模式，无需金钱
     MONEY_PER_KILL: 10,
     MONEY_PER_WAVE: 50
 };
@@ -120,11 +120,11 @@ const state = {
         running: false,
         wave: 1,
         lives: CONFIG.STARTING_LIVES,
-        money: CONFIG.STARTING_MONEY,
-        score: 0,
+        // 沙盒模式：移除 money 和 score
         enemiesKilled: 0,
         enemiesSpawned: 0,
         spawnTimer: 0,
+        score: 0,
         lastTime: 0
     },
     
@@ -300,7 +300,7 @@ class Tower {
         this.rotation = 0;
         this.element = null;
         this.level = 1;
-        this.totalInvested = getTowerCost(type);
+        this.totalInvested = 0; // 沙盒模式
     }
     
     getCell() {
@@ -659,6 +659,7 @@ function handleDrop(e) {
         updateUI();
 }
 
+
 function replaceTowerInCell(cellId, newType, oldTower) {
     state.towers.delete(cellId);
     if (oldTower.element && oldTower.element.parentNode) {
@@ -666,6 +667,7 @@ function replaceTowerInCell(cellId, newType, oldTower) {
     }
     createTowerInCell(cellId, newType);
 }
+
 
 function createTowerInCell(cellId, type) {
     const coords = getCellCoords(cellId);
@@ -690,7 +692,6 @@ function createTowerInCell(cellId, type) {
     cell.appendChild(towerElement);
     
     // 扣除费用
-    state.game.money -= getTowerCost(type);
     updateUI();
 }
 
@@ -744,10 +745,11 @@ function handleCellClick(e) {
     if (!state.selectedTowerType) return;
     
     const selectedType = state.selectedTowerType;
-    const cost = getTowerCost(selectedType);
     
     if (existingTower) {
+        // 有炮塔，直接替换（沙盒模式免费替换）
         if (selectedType === existingTower.type) {
+            // 相同类型，取消选中
             state.selectedTowerType = null;
             clearCellHighlights();
             $$('.tower-item.selected').forEach(el => el.classList.remove('selected'));
@@ -755,38 +757,19 @@ function handleCellClick(e) {
             return;
         }
         
-        const oldCost = getTowerCost(existingTower.type);
-        const diff = cost - oldCost;
-        
-        if (diff > 0) {
-            if (state.game.money >= diff) {
-                if (confirm('替换需要额外花费 $' + diff + '，确定吗？')) {
-                    state.game.money -= diff;
-                    replaceTowerInCell(cellId, selectedType, existingTower);
-                    updateStatus('替换成功！');
-                }
-            } else {
-                alert('金钱不足！');
-                return;
-            }
-        } else {
-            state.game.money += Math.abs(diff);
-            replaceTowerInCell(cellId, selectedType, existingTower);
-            updateStatus('替换成功！返还 $' + Math.abs(diff));
-        }
+        // 替换炮塔
+        replaceTowerInCell(cellId, selectedType, existingTower);
+        updateStatus('替换成功！');
     } else {
-        if (state.game.money >= cost) {
-            state.game.money -= cost;
-            createTowerInCell(cellId, selectedType);
-            updateStatus('部署成功！');
-        } else {
-            alert('金钱不足！');
-            return;
-        }
+        // 空格子，直接部署（沙盒模式免费）
+        createTowerInCell(cellId, selectedType);
+        updateStatus('部署成功！');
     }
     
+    // 保持选中状态，方便连续部署
     updateCellHighlights();
 }
+
 
 function clearCellHighlights() {
     $$('.cell.hovering, .cell.selected, .cell.valid, .cell.invalid').forEach(c => {
@@ -794,14 +777,13 @@ function clearCellHighlights() {
     });
 }
 
+
 function updateCellHighlights() {
     clearCellHighlights();
     
     if (!state.selectedTowerType) return;
     
-    const cost = getTowerCost(state.selectedTowerType);
-    const canAfford = state.game.money >= cost;
-    
+    // 沙盒模式：所有格子都有效
     for (let row = 0; row < CONFIG.GRID_SIZE; row++) {
         for (let col = 0; col < CONFIG.GRID_SIZE; col++) {
             const cellId = getCellId(row, col);
@@ -809,21 +791,15 @@ function updateCellHighlights() {
             if (!cell) continue;
             
             const hasTower = state.towers.has(cellId);
-            
             if (hasTower) {
-                if (canAfford) {
-                    cell.classList.add('valid');
-                } else {
-                    cell.classList.add('invalid');
-                }
-            } else if (canAfford) {
-                cell.classList.add('valid');
+                cell.classList.add('valid'); // 有炮塔也允许替换
             } else {
-                cell.classList.add('invalid');
+                cell.classList.add('valid'); // 空格子可部署
             }
         }
     }
 }
+
 
 // ============ 游戏循环 ============
 function gameLoop(timestamp) {
@@ -1049,22 +1025,31 @@ function gameWin() {
 
 // ============ UI 更新 ============
 function updateStatus(customMsg) {
-    const msg = customMsg || (
-        state.game.running 
-            ? `战斗进行中... 金钱: $${state.game.money} | 生命: ${state.game.lives} | 波次: ${state.game.wave}`
-            : `准备部署炮塔 | 已部署: ${state.towers.size} | 金钱: $${state.game.money}`
-    );
-    elements.status.textContent = msg;
+    // 更新状态栏元素（沙盒模式）
+    if (elements.livesDisplay) elements.livesDisplay.textContent = state.game.lives;
+    if (elements.waveDisplay) elements.waveDisplay.textContent = state.game.wave + '/' + CONFIG.MAX_WAVES;
+    if (elements.scoreDisplay) elements.scoreDisplay.textContent = state.game.score;
+    if (elements.highScoreDisplay) elements.highScoreDisplay.textContent = Storage.getHighScore();
+    
+    if (customMsg) console.log('Status:', customMsg);
 }
 
+
 function updateUI() {
+    // 更新状态栏
+    if (elements.livesDisplay) elements.livesDisplay.textContent = state.game.lives;
+    if (elements.waveDisplay) elements.waveDisplay.textContent = state.game.wave + '/' + CONFIG.MAX_WAVES;
+    if (elements.scoreDisplay) elements.scoreDisplay.textContent = state.game.score;
+    if (elements.highScoreDisplay) elements.highScoreDisplay.textContent = Storage.getHighScore();
+    
+    // 更新技能栏冷却显示
+    updateSkillCooldowns();
+    
+    // 同时更新状态文本
     updateStatus();
 }
 
-function getTowerCost(type) {
-    const costs = { tower1: 50, tower2: 75, tower3: 150, tower4: 100 };
-    return costs[type] || 50;
-}
+
 
 
 
@@ -1217,7 +1202,6 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.battlefield = $('#battlefield');
     elements.startBtn = $('#startBtn');
     elements.livesDisplay = $('#livesDisplay');
-    elements.moneyDisplay = $('#moneyDisplay');
     elements.waveDisplay = $('#waveDisplay');
     elements.scoreDisplay = $('#scoreDisplay');
     elements.highScoreDisplay = $('#highScoreDisplay');
